@@ -1,0 +1,181 @@
+---
+title: "第一次作业-武汉二手房信息分析报告"
+CJKmainfont: Songti SC
+author: "屈意伟"
+date: "2024-10-31"
+output:
+  html_document:
+    code_folding: show
+    fig_caption: yes
+    fig_width: 10
+    highlight: tango
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+  word_document:
+    toc: yes
+  pdf_document:
+    latex_engine: xelatex
+---
+```{r setup, include = FALSE,echo = FALSE}
+knitr::opts_chunk$set(echo = FALSE,error = FALSE, warning = FALSE, message = FALSE,
+                      out.width = "100%", split = FALSE, fig.align = "center")
+#load library
+library(tidyverse)
+library(kableExtra)
+library(lubridate)
+library(scales)
+```
+
+# 你的主要发现
+
+发现1：武汉房屋均价差别较大，最高价为44656元吗，最低价为1771元。但平均价格在1.5万元左右，平均面积在100平米左右，以三室两厅或两室一厅为主要房型。
+
+发现2：武汉二手房源层高主要集中在20-30层之间，相对较高。但随着总层数增加，单价相应增加。
+
+发现3：武汉市二手房装修类型以精修为主，其次简装，毛胚第三，坐北朝南的房屋仍然为中国人最喜欢的房屋朝向。房间数对价格的影响程度较小，但房间数越多的房子房价的上限更高。
+    
+
+# 数据介绍
+
+本报告**链家**数据获取方式如下：
+    
+报告人在2023年9月12日获取了[链家武汉二手房网站](https://wh.lianjia.com/ershoufang/)数据。
+    
+- 链家二手房网站默认显示100页，每页30套房产，因此本数据包括3000套房产信息；
+    
+- 数据包括了页面可见部分的文本信息，具体字段及说明见作业说明。
+
+ **说明：**数据仅用于教学；由于不清楚链家数据的展示规则，因此数据可能并不是武汉二手房市场的随机抽样，结论很可能有很大的偏差，甚至可能是错误的。
+    
+```{r}
+lj<- read_csv("2023-09-12_cleaned.csv")
+```
+
+# 数据概览
+
+数据表（lj)共包括`r names(lj)`等`r ncol(lj)`个变量,共`r nrow(lj)`行。表的前10行示例如下：
+
+```{r}
+lj %>% 
+  head(10) %>%
+  kable(caption = "武汉链家二手房") %>% 
+  kable_styling()
+```
+
+各变量的简短信息：
+```{r}
+glimpse(lj)
+```
+
+各变量的简短统计：
+```{r}
+summary(lj)
+```
+
+可以看到：
+
+- 直观结论1：数据共包含3000行数据，18个变量
+
+- 直观结论2：房源以1-2个客厅，3个卧室为主。房源平均面积为100平米左右。
+
+- 直观结论3：房屋单价从1771元至44656元不等，均价为15148元。总价平均为155.9元。
+
+
+# 探索性分析
+
+## 变量1的数值描述与图形
+```{r}
+ggplot(lj, aes(x=building_area,y=price_sqm)) +
+  geom_point(alpha=0.5) +
+  labs(title="房屋单价面积对比表", x="房屋面积", y="单价(RMB)")
+```
+
+
+发现：
+
+- 发现1：武汉二手房市场价格主要维持在10000—20000元之间，房屋面积主要在200平米以下。
+
+- 发现2：仅有一处小区面积在600平米左右，该小区均价在25000元左右。
+
+## 变量2的数值描述与图形
+
+```{r}
+ggplot(lj, aes(x=decoration,y=price_sqm)) +
+  geom_point(alpha=0.5) +
+  labs(title="装修情况对单价的影响", x="装修情况", y="单价(RMB)")
+```
+
+
+发现：
+
+- 发现1：装修情况越好，单价相对越高。毛坯均价显著低于精装房。
+
+
+## 变量3的数值描述与图形
+
+```{r}
+ggplot(data = lj,mapping = aes(x=factor(bedrooms),y=price_sqm))+geom_boxplot()
+```
+
+
+发现：房间数对价格的影响程度较小。但是一定程度上房间数越多，房价的分散程度越大。表明房间数越多的房子房价的上限更高。
+
+## 探索问题1
+
+```{r}
+ggplot(data=lj,aes(x=property_t_height,y=price_sqm))+
+geom_point() +  
+  geom_smooth(method = "lm", se = TRUE)
+```
+
+
+发现：
+
+- 发现1：小区的总层数主要维护在30层级及以下。
+
+- 发现2：小区单价与总层数呈正相关。小区楼层越高，单价相应升高。
+
+## 探索问题2
+
+```{r}
+name_top10 <- lj %>%
+ group_by(property_name) %>%
+ summarise(count = n()) %>%
+ arrange(desc(count)) %>%
+ head(10)
+name_top10
+ggplot(name_top10, aes(x = property_name, y = count)) +
+ geom_bar(stat = "identity") +
+ labs(title = "房源最多的小区",
+      x = "小区名称",
+      y = "房源数量")
+```
+
+
+发现：东立国际、保利中央公馆、朗诗里程为武汉房源最多的三大小区。
+
+## 探索问题3
+
+```{r}
+ggplot(data=lj)+geom_bar(mapping=aes(x=directions1))
+```
+```{r}
+ggplot(data=lj)+geom_bar(mapping=aes(x=directions2))
+```
+
+
+发现：武汉二手房源主要以坐北朝南为主，表明该朝向房屋容易接收阳光，更为中国人所喜爱。
+
+---
+
+# 发现总结
+
+发现1：武汉房屋均价差别较大，最高价为44656元吗，最低价为1771元。但平均价格在1.5万元左右，平均面积在100平米左右，以三室两厅或两室一厅为主要房型。
+
+发现2：武汉二手房源层高主要集中在20-30层之间，相对较高。但随着总层数增加，单价相应增加。
+
+发现3：武汉市二手房装修类型以精修为主，其次简装，毛胚第三，坐北朝南的房屋仍然为中国人最喜欢的房屋朝向。房间数对价格的影响程度较小，但房间数越多的房子房价的上限更高。
+
+
+
